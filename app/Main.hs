@@ -7,13 +7,15 @@
 
 module Main where
 
+import Data.Aeson (eitherDecode)
 import Data.Maybe
   ( fromMaybe,
   )
-import Data.Text
+import Data.Text (Text)
 import Lucid
 import Lucid.Base
 import Lucid.Servant
+import Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest)
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
 import Servant.HTML.Lucid
@@ -37,8 +39,8 @@ apiLink_ ::
   MkLink endpoint Attribute
 apiLink_ = safeAbsHref_ (Proxy :: Proxy API)
 
-server :: Server API
-server = return root :<|> return html_data
+server :: [String] -> Server API
+server items = return root :<|> return html_data
   where
     root :: Html ()
     root =
@@ -49,10 +51,11 @@ server = return root :<|> return html_data
           script_ [src_ "https://unpkg.com/hyperscript.org@0.9.12", type_ "text/javascript"] (mempty :: Html ())
         body_ $ do
           h1_ "Hello, Haskell!"
-          p_ [hxget_ "/data", hxswap_ "innerHTML", hyperscript_ "on click set *background-color to `red`"] "Click me !"
+          p_ [hxget_ "/data", hxswap_ "innerHTML", hyperscript_ "on click set *background-color to `lightblue`"] "Click me !"
 
     html_data :: Html ()
-    html_data = p_ "This is the data"
+    html_data = ul_ $ mapM_ (li_ . toHtml) items
+
 
 hxget_ :: Text -> Attribute
 hxget_ = makeAttribute "hx-get"
@@ -63,11 +66,25 @@ hyperscript_ = makeAttribute "_"
 hxswap_ :: Text -> Attribute
 hxswap_ = makeAttribute "hx-swap"
 
-app :: Application
-app = serve api server
+
+getList :: IO [String]
+getList = do
+  request <- parseRequest "https://salin-abangku.vercel.app/api/all"
+  response <- httpLBS request
+  let body = getResponseBody response
+  case eitherDecode body of
+    Left _err -> return []
+    Right xs -> return (xs :: [String])
+
+htmlList :: [String] -> Html ()
+htmlList xs = ul_ $ mapM_ (li_ . toHtml) xs
+
+app :: [String] -> Application
+app items = serve api (server items)
 
 main :: IO ()
 main = do
   port <- fmap (fromMaybe 8000 . (>>= readMaybe)) (lookupEnv "PORT")
   putStrLn $ "http://localhost:" ++ show port ++ "/"
-  Warp.run port app
+  items <- getList
+  Warp.run port (app items)
