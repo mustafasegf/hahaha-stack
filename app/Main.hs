@@ -53,14 +53,18 @@ server items = return root :<|> return html_data
           script_ [src_ "https://unpkg.com/hyperscript.org@0.9.12", type_ "text/javascript"] (mempty :: Html ())
         body_ $ do
           h1_ "Hello, Haskell!"
-          p_ [hxget_ "/data", hxswap_ "innerHTML", hyperscript_ "on click set *background-color to `lightblue`"] "Click me !"
+          p_ [hxget_ "/data", hxswap_ "outerHTML", style_ "background-color: lightblue" ] "Click me !"
+
 
     html_data :: Html ()
-    html_data = ul_ $ mapM_ (li_ [hyperscript_ [r| on click 
-      js(me)
-        if ('clipboard' in window.navigator) {
-          window.navigator.clipboard.writeText(me.innerText)
-        }
+    html_data = ul_ $ mapM_ (li_ [style_ "background-color: lightblue", hyperscript_ [r| on click 
+      call window.navigator.clipboard.writeText(me.innerText)
+      set *background-color to `lightgreen`
+      wait 1s
+      transition
+        *background-color
+        to `lightblue`
+        over 1s
     |]] . toHtml) items
 
 hxget_ :: Text -> Attribute
