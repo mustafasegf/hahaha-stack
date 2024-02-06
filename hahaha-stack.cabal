@@ -80,6 +80,7 @@ executable hahaha-stack
       , aeson
       , http-conduit
       , bytestring
+      , raw-strings-qq
 
 
     -- Directories containing source files.
