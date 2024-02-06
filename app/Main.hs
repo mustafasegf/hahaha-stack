@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Main where
 
@@ -12,6 +13,7 @@ import Data.Maybe
   ( fromMaybe,
   )
 import Data.Text (Text)
+import Text.RawString.QQ
 import Lucid
 import Lucid.Base
 import Lucid.Servant
@@ -54,8 +56,12 @@ server items = return root :<|> return html_data
           p_ [hxget_ "/data", hxswap_ "innerHTML", hyperscript_ "on click set *background-color to `lightblue`"] "Click me !"
 
     html_data :: Html ()
-    html_data = ul_ $ mapM_ (li_ . toHtml) items
-
+    html_data = ul_ $ mapM_ (li_ [hyperscript_ [r| on click 
+      js(me)
+        if ('clipboard' in window.navigator) {
+          window.navigator.clipboard.writeText(me.innerText)
+        }
+    |]] . toHtml) items
 
 hxget_ :: Text -> Attribute
 hxget_ = makeAttribute "hx-get"
@@ -65,7 +71,6 @@ hyperscript_ = makeAttribute "_"
 
 hxswap_ :: Text -> Attribute
 hxswap_ = makeAttribute "hx-swap"
-
 
 getList :: IO [String]
 getList = do
